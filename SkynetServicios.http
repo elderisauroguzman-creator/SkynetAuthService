@@ -1,0 +1,6 @@
+@SkynetServicios_HostAddress = http://localhost:5023
+
+GET {{SkynetServicios_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
