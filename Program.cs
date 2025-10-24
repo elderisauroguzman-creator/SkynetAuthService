@@ -1,39 +1,29 @@
 ﻿using AuthService.Data;
 using AuthService.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//builder.Services.AddCors(options =>
-//{
-//    options.AddPolicy("AllowAngularDev", policy =>
-//    {
-//        policy.WithOrigins("http://localhost:4200",
-//            "http://localhost:5023",
-//            "http://localhost:53537",
-//            "http://localhost:63796",
-//             "http://localhost:57016") // <-- la URL de tu Angular
-//              .AllowAnyHeader()
-//              .AllowAnyMethod();
-//    });
-//});
-
-
-
+// ---------------------
+// 1️⃣ Configuración de CORS
+// ---------------------
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowNetlify", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("https://eclectic-starburst-30e0ac.netlify.app") // dominio frontend
+              .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowCredentials(); // para JWT o cookies
     });
 });
 
+// ---------------------
+// 2️⃣ Configuración de JWT
+// ---------------------
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -49,14 +39,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
         };
     });
+
 builder.Services.AddAuthorization();
 
-// DB Context
+// ---------------------
+// 3️⃣ Configuración de base de datos y servicios
+// ---------------------
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Services
-builder.Services.AddScoped<AuthService.Interfaces.IAuthService, AuthService.Services.AuthService>();
+builder.Services.AddScoped<IAuthService, AuthService.Services.AuthService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -64,26 +56,50 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+// ---------------------
+// 4️⃣ Swagger solo en desarrollo
+// ---------------------
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseCors("AllowAll");
 
-if (!app.Environment.IsProduction())
+// ---------------------
+// 5️⃣ HTTPS
+// ---------------------
+app.UseHttpsRedirection();
+
+// ---------------------
+// 6️⃣ CORS debe ir antes de Authentication y Authorization
+// ---------------------
+app.UseCors("AllowNetlify");
+
+// ---------------------
+// 7️⃣ Middleware para OPTIONS preflight
+// ---------------------
+app.Use(async (context, next) =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
+    if (context.Request.Method == "OPTIONS")
     {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "AuthService API v1");
-        options.RoutePrefix = string.Empty; // opcional: para que abra en "/"
-    });
-}
+        context.Response.StatusCode = 200;
+        await context.Response.CompleteAsync();
+    }
+    else
+    {
+        await next();
+    }
+});
 
+// ---------------------
+// 8️⃣ Authentication y Authorization
+// ---------------------
 app.UseAuthentication();
 app.UseAuthorization();
 
+// ---------------------
+// 9️⃣ Mapear controladores
+// ---------------------
 app.MapControllers();
 
 app.Run();
