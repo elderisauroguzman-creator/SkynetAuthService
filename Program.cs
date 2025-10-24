@@ -26,11 +26,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowNetlifyOrigin", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("https://eclectic-starburst-30e0ac.netlify.app")
+              .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowCredentials(); // si usas cookies o autenticación
     });
 });
 
@@ -69,7 +70,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseCors("AllowAll");
+app.UseCors("AllowNetlifyOrigin");
 
 if (!app.Environment.IsProduction())
 {
