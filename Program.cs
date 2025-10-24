@@ -7,28 +7,18 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ---------------------
-// 1️⃣ Configuración de CORS
-// ---------------------
+// CORS Configuration
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowNetlify", policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins(
-                "https://eclectic-starburst-30e0ac.netlify.app",
-                "http://localhost:3000",
-                "http://localhost:5173"
-              )
-              .AllowAnyHeader()
+        policy.AllowAnyOrigin()
               .AllowAnyMethod()
-              .AllowCredentials()
-              .WithExposedHeaders("*");
+              .AllowAnyHeader();
     });
 });
 
-// ---------------------
-// 2️⃣ Configuración de JWT
-// ---------------------
+// JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -47,35 +37,37 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// ---------------------
-// 3️⃣ Configuración de base de datos y servicios
-// ---------------------
+// DB Context
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddScoped<IAuthService, AuthService.Services.AuthService>();
-
+// Services
+builder.Services.AddScoped<AuthService.Interfaces.IAuthService, AuthService.Services.AuthService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// ---------------------
-// 4️⃣ Swagger
-// ---------------------
-if (app.Environment.IsDevelopment())
+// ⚠️ IMPORTANTE: CORS debe ir ANTES de Authentication/Authorization
+app.UseCors("AllowAll");
+
+// Swagger Configuration
+if (app.Environment.IsDevelopment() || !app.Environment.IsProduction())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "AuthService API v1");
+        options.RoutePrefix = string.Empty;
+    });
 }
 
-// ---------------------
-// 5️⃣ MIDDLEWARE - ORDEN CORRECTO
-// ---------------------
-app.UseCors("AllowNetlify");      // 1. CORS primero
-app.UseAuthentication();           // 2. Authentication
-app.UseAuthorization();            // 3. Authorization
-app.MapControllers();              // 4. Controladores
+// HTTPS Redirection (opcional, comenta si Railway lo maneja)
+// app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
 
 app.Run();
