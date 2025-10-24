@@ -25,7 +25,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngularDev", policy =>
     {
-        policy.WithOrigins()
+        policy.WithOrigins("http://localhost:4200", "https://eclectic-starburst-30e0ac.netlify.app")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
