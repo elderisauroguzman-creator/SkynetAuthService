@@ -14,10 +14,15 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowNetlify", policy =>
     {
-        policy.WithOrigins("https://eclectic-starburst-30e0ac.netlify.app") // dominio frontend
+        policy.WithOrigins(
+                "https://eclectic-starburst-30e0ac.netlify.app",
+                "http://localhost:3000",
+                "http://localhost:5173"
+              )
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // para JWT o cookies
+              .AllowCredentials()
+              .WithExposedHeaders("*");
     });
 });
 
@@ -57,7 +62,7 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 // ---------------------
-// 4️⃣ Swagger solo en desarrollo
+// 4️⃣ Swagger
 // ---------------------
 if (app.Environment.IsDevelopment())
 {
@@ -66,40 +71,11 @@ if (app.Environment.IsDevelopment())
 }
 
 // ---------------------
-// 5️⃣ HTTPS
+// 5️⃣ MIDDLEWARE - ORDEN CORRECTO
 // ---------------------
-app.UseHttpsRedirection();
-
-// ---------------------
-// 6️⃣ CORS debe ir antes de Authentication y Authorization
-// ---------------------
-app.UseCors("AllowNetlify");
-
-// ---------------------
-// 7️⃣ Middleware para OPTIONS preflight
-// ---------------------
-app.Use(async (context, next) =>
-{
-    if (context.Request.Method == "OPTIONS")
-    {
-        context.Response.StatusCode = 200;
-        await context.Response.CompleteAsync();
-    }
-    else
-    {
-        await next();
-    }
-});
-
-// ---------------------
-// 8️⃣ Authentication y Authorization
-// ---------------------
-app.UseAuthentication();
-app.UseAuthorization();
-
-// ---------------------
-// 9️⃣ Mapear controladores
-// ---------------------
-app.MapControllers();
+app.UseCors("AllowNetlify");      // 1. CORS primero
+app.UseAuthentication();           // 2. Authentication
+app.UseAuthorization();            // 3. Authorization
+app.MapControllers();              // 4. Controladores
 
 app.Run();
